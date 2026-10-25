@@ -374,3 +374,5 @@ Python 3.14 · pandas · shapely · scikit-learn · VADER · transformers
 * **Reddit** - collected through the official API, author names hashed,
   raw text never committed. Access has required an approved application
   since November 2025.
+#   b r i g h t o n - e m o t i o n a l - m a p  
+ 
