@@ -1,378 +1,380 @@
 # 🌊 Emotional Map of Brighton
 
-An interactive map of the emotional landscape of Brighton's neighbourhoods:
-what people talk about where, in what mood, and how it shifts across seasons.
+Интерактивная карта эмоционального фона районов Брайтона: где в городе
+о чём говорят, с каким настроением и как это меняется по сезонам.
 
-A complete ML pipeline - from raw data collection to a working dashboard.
+Полный ML-пайплайн от сбора сырых данных до работающего дашборда.
 
-*[Русская версия README](README.ru.md)*
+*[English version](README.md) - основная версия для GitHub*
 
-![Sentiment map](reports/figures/emotional_map.png)
-
----
-
-## What this project does
-
-| Stage | Task | Tools |
-|---|---|---|
-| **Geo collection** | ~2,000 Brighton venues with coordinates | OpenStreetMap Overpass API |
-| **Text collection** | posts and comments about the city | Reddit API (PRAW) - *see caveat below* |
-| **Open data** | 81,171 incidents across 36 months | Police.uk API (no keys required) |
-| **Geo-linking** | point → district, text → district | shapely, name matching |
-| **Sentiment** | polarity of each text | VADER vs DistilBERT |
-| **Topics** | what people write about | keywords vs LDA vs BERTopic |
-| **Time series** | seasonality, spikes, anomalies | pandas, z-scores |
-| **Product** | map + filterable dashboard | Folium, Plotly, Streamlit |
+![Карта настроений](reports/figures/emotional_map.png)
 
 ---
 
-## ⚠️ Honesty about the data
+## Что тут происходит
 
-Three sources with very different status. Sorting out which is which is
-the first thing a reader should do.
-
-| Source | Status | Volume |
+| Этап | Что делаем | Инструменты |
 |---|---|---|
-| OpenStreetMap | **real** | 1,988 venues with coordinates |
-| Police.uk | **real** | 81,171 incidents, 36 months |
-| Texts | **synthetic** | 7,434 generated |
+| **Сбор гео** | ~2000 заведений Брайтона с координатами | OpenStreetMap Overpass API |
+| **Сбор текстов** | посты и комментарии о городе | Reddit API (PRAW) - *см. оговорку ниже* |
+| **Открытые данные** | 81 171 происшествие, 36 месяцев | Police.uk API (без ключей) |
+| **Геопривязка** | точка → район, текст → район | shapely, поиск по названиям |
+| **Sentiment** | тональность каждого текста | VADER vs DistilBERT |
+| **Темы** | о чём пишут | ключевые слова vs LDA vs BERTopic |
+| **Динамика** | сезонность, всплески, аномалии | pandas, z-оценки |
+| **Продукт** | карта + дашборд с фильтрами | Folium, Plotly, Streamlit |
 
-**Why the texts are synthetic.** In November 2025 Reddit introduced its
+---
+
+## ⚠️ Честно о данных
+
+В проекте три источника, и они очень разного статуса. Разобраться,
+что из них настоящее, - первое, что стоит сделать читателю.
+
+| Источник | Статус | Объём |
+|---|---|---|
+| OpenStreetMap | **реальные** | 1988 заведений с координатами |
+| Police.uk | **реальные** | 81 171 происшествие, 36 месяцев |
+| Тексты | **синтетические** | 7434 сгенерированных |
+
+**Почему тексты синтетические.** В ноябре 2025 Reddit ввёл
 [Responsible Builder Policy](https://support.reddithelp.com/hc/en-us/articles/42728983564564-Responsible-Builder-Policy)
-and closed self-service API app registration. The `prefs/apps` page now
-silently does nothing, and access is granted only through a manually
-reviewed application. Unauthenticated requests return HTTP 403 - verified.
-The `collect/reddit_texts.py` module is written and ready, but cannot run
-without an approved key.
+и закрыл самостоятельную регистрацию API-приложений: страница
+`prefs/apps` теперь молча ничего не делает, а доступ выдаётся по заявке
+с ручным одобрением. Неавторизованные запросы возвращают HTTP 403 -
+проверено. Модуль `collect/reddit_texts.py` написан и готов, но
+запустить его без одобренного ключа нельзя.
 
-So `src/bem/collect/demo_corpus.py` generates a corpus for developing and
-debugging the NLP pipeline. **No conclusions about the real Brighton can
-be drawn from these texts**, and the dashboard says so on its first screen.
+Поэтому для отладки NLP-пайплайна написан генератор
+`src/bem/collect/demo_corpus.py`. Выводы о настоящем Брайтоне по этим
+текстам делать нельзя, и дашборд говорит об этом на первом экране.
 
-**Why not Google Places reviews.** Their Terms of Service prohibit storing
-review content for more than 30 days or displaying it outside Google Maps -
-unacceptable for a public portfolio repository.
+**Почему не отзывы Google Places.** Их условия использования запрещают
+хранить контент отзывов дольше 30 дней и показывать его вне Google Maps -
+для публичного репозитория неприемлемо.
 
-**How the gap was filled.** Rather than leaving the project entirely on
-synthetic data, I added the Police.uk API: no keys, Open Government Licence,
-36 months of geo-referenced records. It is not a replacement for text -
-there is no sentiment or topic structure in it - but it is a real view of
-the same question: *what is it like to be in this neighbourhood?*
+**Чем закрыли пробел.** Вместо того чтобы оставить проект целиком
+на синтетике, добавлен Police.uk API: ключи не нужны, лицензия Open
+Government Licence, 36 месяцев геопривязанных данных. Это не замена
+текстам - тональности и тем там нет, - но это реальный взгляд на тот же
+вопрос «каково находиться в этом районе».
 
 ---
 
-## Quick start
+## Быстрый старт
 
 ```bash
-git clone <repo> && cd brighton-emotional-map
+git clone <репозиторий> && cd brighton-emotional-map
 
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 .venv/bin/pip install -r requirements-nlp.txt   # torch, transformers, bertopic
 
-cp .env.example .env    # keys only needed for real Reddit data
+cp .env.example .env    # ключи нужны только для реальных данных Reddit
 
-./run_all.sh            # full pipeline, ~5 minutes
+./run_all.sh            # весь пайплайн, ~3 минуты
 ```
 
-Dashboard:
+Дашборд:
 
 ```bash
 PYTHONPATH=src .venv/bin/streamlit run app/streamlit_app.py
 ```
 
-Tests:
+Тесты:
 
 ```bash
 PYTHONPATH=src .venv/bin/pytest -v
 ```
 
-Chart labels are English by default. The repository is bilingual, so any
-script that draws something takes a `--lang` flag:
+Подписи на графиках по умолчанию английские: README на GitHub английский,
+и графики в нём должны читаться теми же людьми. Репозиторий двуязычный,
+поэтому у каждого рисующего скрипта есть флаг `--lang`:
 
 ```bash
 PYTHONPATH=src .venv/bin/python scripts/05_timeseries.py --lang ru
 ```
 
-Labels live in `src/bem/viz/labels.py`, not hardcoded in the plotting code -
-otherwise switching language would mean editing five files and forgetting one.
+Подписи вынесены в `src/bem/viz/labels.py`, а не зашиты в код рисования -
+иначе для смены языка пришлось бы править пять файлов и один точно забыть.
 
 ---
 
-## Repository layout
+## Структура репозитория
 
 ```
 brighton-emotional-map/
-├── config/                    # everything configurable, no code edits needed
-│   ├── districts.yaml         #   district boundaries (polygons)
-│   ├── poi_categories.yaml    #   which OSM objects to fetch
-│   └── text_keywords.yaml     #   district place names, topic keywords
+├── config/                    # всё, что настраивается, - без правки кода
+│   ├── districts.yaml         #   границы районов (полигоны)
+│   ├── poi_categories.yaml    #   какие объекты тянем из OSM
+│   └── text_keywords.yaml     #   топонимы районов и слова тем
 │
-├── src/bem/                   # reusable code (importable, tested)
-│   ├── config.py              #   paths and secrets in one place
+├── src/bem/                   # переиспользуемый код (импортируется и тестируется)
+│   ├── config.py              #   пути и секреты в одном месте
 │   ├── collect/
-│   │   ├── http.py            #   polite HTTP: backoff, retries, User-Agent
-│   │   ├── osm_places.py      #   Overpass API + mirror failover
-│   │   ├── reddit_texts.py    #   PRAW, authors hashed (needs approved key)
-│   │   ├── police_uk.py       #   Police.uk API, no keys needed
-│   │   └── demo_corpus.py     #   synthetic generator for development
-│   ├── geo/districts.py       #   point-in-polygon
+│   │   ├── http.py            #   вежливый HTTP: паузы, retry, User-Agent
+│   │   ├── osm_places.py      #   Overpass API + fallback на зеркала
+│   │   ├── reddit_texts.py    #   PRAW, ники хэшируются (нужен одобренный ключ)
+│   │   ├── police_uk.py       #   Police.uk API, ключи не нужны
+│   │   └── demo_corpus.py     #   генератор синтетики для отладки
+│   ├── geo/districts.py       #   точка-в-полигоне
 │   ├── nlp/
-│   │   ├── cleaning.py        #   text cleaning
-│   │   ├── text_linking.py    #   text → district
-│   │   ├── sentiment.py       #   VADER and DistilBERT
-│   │   └── topics.py          #   keywords, LDA, BERTopic
+│   │   ├── cleaning.py        #   очистка текста
+│   │   ├── text_linking.py    #   текст → район
+│   │   ├── sentiment.py       #   VADER и DistilBERT
+│   │   └── topics.py          #   ключевые слова, LDA, BERTopic
 │   ├── analysis/
-│   │   ├── timeseries.py      #   monthly series, seasonality, anomalies
-│   │   └── ranking.py         #   shrinkage toward the global mean
-│   └── viz/maps.py            #   Folium maps and static PNG
+│   │   ├── timeseries.py      #   помесячные ряды, сезонность, аномалии
+│   │   └── ranking.py         #   сжатие оценок к среднему
+│   └── viz/maps.py            #   карты Folium и статичный PNG
 │
-├── scripts/                   # runnable pipeline steps
-│   ├── 01_collect_places.py       05_timeseries.py
-│   ├── 02_collect_texts.py        06_build_outputs.py
-│   ├── 03_sentiment.py            07_collect_police.py
-│   └── 04_topics.py
+├── scripts/                   # запускаемые шаги пайплайна
+│   ├── 01_collect_places.py
+│   ├── 02_collect_texts.py
+│   ├── 03_sentiment.py
+│   ├── 04_topics.py
+│   ├── 05_timeseries.py
+│   └── 06_build_outputs.py
 │
-├── notebooks/01_eda.ipynb     # exploration: look first, then decide what to code
-├── app/streamlit_app.py       # dashboard
-├── tests/                     # 28 tests
+├── notebooks/01_eda.ipynb     # разведка: смотрим глазами, решаем, что кодить
+├── app/streamlit_app.py       # дашборд
+├── tests/                     # 28 тестов
 ├── data/
-│   ├── raw/                   # raw, git-ignored
-│   ├── interim/               # intermediate, git-ignored
-│   └── processed/             # final aggregates, committed
-└── reports/figures/           # charts and maps
+│   ├── raw/                   # сырое, в git НЕ едет
+│   ├── interim/               # промежуточное, в git НЕ едет
+│   └── processed/             # финальные агрегаты, их коммитим
+└── reports/figures/           # графики и карты
 ```
 
-### What belongs in a notebook, and what belongs in `.py`
+### Что в notebook, а что в .py
 
-A question people often get wrong. The rule used here:
+Вопрос, на котором часто спотыкаются. Правило, по которому разделено здесь:
 
-| Notebook | `.py` module |
+| В notebook | В .py |
 |---|---|
-| look at data once | run it many times |
-| plot to understand | plot for a report |
-| test a hunch | the hunch became code |
-| output is understanding | output is a file on disk |
+| смотрю на данные один раз | запускаю много раз |
+| строю график, чтобы понять | строю график для отчёта |
+| проверяю догадку | проверенная догадка стала кодом |
+| результат - понимание в голове | результат - файл на диске |
 
-A notebook cannot be tested, cannot be imported, and is nearly impossible
-to review in git - the diff is a soup of JSON. Logic that lives only in a
-notebook breaks silently. So `notebooks/01_eda.ipynb` documents **how
-decisions were made**, while the decisions themselves live in `src/` under
-test.
+Ноутбук нельзя протестировать, нельзя импортировать и почти нельзя
+ревьюить в git (diff показывает мешанину JSON). Логика, живущая только
+в ноутбуке, ломается незаметно. Поэтому `notebooks/01_eda.ipynb`
+документирует, **как принимались решения**, а сами решения живут
+в `src/` и покрыты тестами.
 
 ---
 
-## Results
+## Результаты
 
-### Sentiment: VADER vs DistilBERT
+### Sentiment: VADER против DistilBERT
 
-| Model | Accuracy | Macro-F1 | Texts/sec |
+| модель | accuracy | macro-F1 | текстов/с |
 |---|---|---|---|
-| VADER | 0.588 | 0.478 | ~23,000 |
+| VADER | 0.588 | 0.478 | ~23 000 |
 | DistilBERT (SST-2) | **0.738** | **0.726** | ~300 |
 
-DistilBERT is more accurate but **80× slower**. For a nightly batch job
-that is irrelevant; for real-time it decides the answer.
+DistilBERT точнее, но **в 80 раз медленнее**. Для батчевой обработки
+раз в сутки это неважно, для real-time - решающе.
 
-**The finding that mattered more than the model choice.** DistilBERT is
-trained on two classes and cannot say "neutral". It confidently labelled
-the purely factual sentence *"The cafe is on the corner of Gardner Street"*
-as positive with probability 0.97. The neutral class has to be constructed
-manually, via a confidence threshold - and tuning that threshold gained
-more than switching from VADER to a transformer:
+**Находка, которая оказалась важнее выбора модели.** DistilBERT обучен
+на двух классах и не умеет говорить «нейтрально». Он уверенно назвал
+позитивом справочную фразу *«The cafe is on the corner of Gardner
+Street»* с вероятностью 0.97. Нейтральный класс приходится делать
+самому - через порог уверенности. Подбор этого порога дал больше,
+чем переход с VADER на трансформер:
 
-| Threshold | Macro-F1 |
+| порог | macro-F1 |
 |---|---|
-| 0.85 (intuitive) | 0.599 |
+| 0.85 (интуитивный) | 0.599 |
 | 0.95 | 0.651 |
-| **0.995 (tuned)** | **0.726** |
+| **0.995 (подобранный)** | **0.726** |
 
-### Topics: the simplest method won
+### Темы: самый простой метод выиграл
 
-| Method | ARI | NMI | Time |
+| метод | ARI | NMI | время |
 |---|---|---|---|
-| **Keyword matching** | **0.381** | 0.383 | 0.7 s |
-| LDA (10 topics) | 0.088 | 0.159 | 6 s |
-| BERTopic (9 topics) | 0.093 | 0.275 | 37 s |
+| **Ключевые слова** | **0.381** | 0.383 | 0.7 с |
+| LDA (10 тем) | 0.088 | 0.159 | 6 с |
+| BERTopic (9 тем) | 0.093 | 0.275 | 37 с |
 
-**This comparison has a flaw, and it should be stated before anyone else
-finds it.** The demo corpus templates were written using the same
-vocabulary that sits in the keyword list - the comparison is partly
-circular. On real Reddit data the ranking could easily flip.
+**Но у этого сравнения есть изъян, и о нём надо говорить первым.**
+Шаблоны демо-корпуса писались той же лексикой, что лежит в списке
+ключевых слов, - сравнение частично круговое. На настоящих данных
+Reddit расклад вполне может перевернуться.
 
-A second observation: a low ARI does not mean the model is useless. ARI
-scores per-document agreement, while the product needs the **per-district
-aggregate** - and BERTopic recovers that considerably better:
+Второе наблюдение: низкий ARI не значит «модель бесполезна». ARI
+считает совпадение по каждому документу, а продукту нужен **агрегат
+по району** - и его BERTopic восстанавливает заметно лучше:
 
-| District | BERTopic found | Ground truth |
+| Район | Нашёл BERTopic | Заложено в данные |
 |---|---|---|
 | Kemptown | night / lively | nightlife, noise ✅ |
 | North Laine | shops / independent | shopping_vibe ✅ |
 | Hove | price, parking | parking, service ✅ |
 | The Lanes | food | crowds, service ❌ |
 
-### Seasonality in REAL data (Police.uk)
+### Сезонность на РЕАЛЬНЫХ данных (Police.uk)
 
-![Seasonality from police data](reports/figures/police_seasonality.png)
+![Сезонность по данным полиции](reports/figures/police_seasonality.png)
 
-No synthetic data here - 81,171 incidents over 36 months, normalised to
-each district's own average month.
+Здесь синтетики нет - 81 171 происшествие за 36 месяцев, нормированные
+на средний уровень каждого района.
 
-**What it shows:**
+**Что видно:**
 
-* **Seasonality is real:** incidents affecting a neighbourhood's atmosphere
-  are **1.54× more frequent** in summer than in winter (July 872 vs
-  February 566 per month on average).
-* **The peak is July, not August** - for four districts out of five.
-* **Except Seafront:** the only district peaking in August (1.38× its
-  normal level, 11.5% of its annual volume). That is exactly the geography
-  the Brighton Pride parade runs through.
-* **Counter-intuitive:** `anti-social-behaviour` actually **drops** in
-  August (201 vs 252 in June). A mass city event does not automatically
-  mean more disorder.
+* **Сезонность реальна:** летом происшествий, влияющих на атмосферу
+  района, в **1.54 раза** больше, чем зимой (июль 872 против февраля 566
+  в среднем за месяц).
+* **Пик - июль, а не август.** У четырёх районов из пяти.
+* **Исключение - Seafront:** единственный район с пиком в августе
+  (1.38 от обычного уровня, 11.5% годового объёма). Это ровно та
+  география, где проходит парад Brighton Pride.
+* **Контринтуитивное:** `anti-social-behaviour` в августе **падает**
+  (201 против 252 в июне). Массовое городское событие не означает
+  автоматического роста беспорядков.
 
-**This refuted my own hypothesis.** I had baked August into the synthetic
-corpus as the year's main peak for four districts. Real data showed the
-peak is in July, and the August effect is localised to the seafront. A good
-illustration of why real data matters: a plausible assumption turned out to
-be wrong in a checkable way.
+**Это опровергло мою собственную гипотезу.** В синтетический корпус
+я заложил август как главный пик года для четырёх районов. Реальные
+данные показали, что пик июльский, а августовский эффект локализован
+на набережной. Хороший пример того, зачем нужны настоящие данные:
+правдоподобное предположение оказалось неверным в проверяемой части.
 
-A caveat without which none of the above should be read: the number of
-*recorded* incidents is not the crime rate - it is the crime rate
-multiplied by willingness to report and by police presence. Police.uk also
-deliberately snaps coordinates to street centroids for victim privacy, so
-map "hotspots" are partly an artefact.
+Оговорка, без которой цифры выше читать нельзя: число
+зарегистрированных происшествий - это не уровень преступности, а
+уровень, умноженный на готовность заявлять и на плотность полицейского
+присутствия. Плюс Police.uk намеренно округляет координаты до центра
+улицы ради приватности, поэтому «горячие точки» на карте частично
+артефакт.
 
-### Seasonality on the demo corpus (pipeline validation)
+### Сезонность на демо-корпусе (проверка пайплайна)
 
-![Seasonality](reports/figures/seasonality.png)
+![Сезонность](reports/figures/seasonality.png)
 
-The pipeline independently recovered both festivals planted in the data:
-May (Fringe, net +0.365) and August (Pride, +0.358) against January
-(−0.106). A z-score anomaly detector flagged 6 August and 4 May spikes
-without any knowledge of the events calendar.
+Пайплайн самостоятельно нашёл оба заложенных фестиваля: май (Fringe,
+net +0.365) и август (Pride, +0.358) против января (−0.106). Детектор
+аномалий по z-оценке поймал 6 августовских и 4 майских всплеска,
+ничего не зная о календаре событий.
 
-A subtle detail: **Hove is the only district with no August spike** -
-precisely because the generator excludes it from the Pride districts. The
-pipeline recovered not just the effect but its geography.
+Тонкая деталь: **Hove единственный не даёт всплеска в августе** -
+именно потому, что в генераторе он не входит в районы Pride. Пайплайн
+восстановил не только эффект, но и его географию.
 
-![Monthly trend](reports/figures/monthly_trend.png)
-
----
-
-## Engineering decisions worth defending
-
-**Rate-limit respect is code, not a claim.** During development I got
-myself blocked: four heavy queries back-to-back with no pause, and Overpass
-answered `406`, then started dropping TLS connections. That is where
-`collect/http.py` gets its inter-request delay, exponential backoff, `406`
-and `SSLError` in the retryable set, and where `osm_places.py` gets its
-Overpass mirror failover.
-
-**Privacy.** Reddit author names are never stored - only an irreversible
-hash. You can tell two authors apart; you cannot recover an identity.
-
-**Data and code are separated.** Raw data is git-ignored. Only aggregates
-from `data/processed/` are committed.
-
-**Tests target what fails silently.** 28 tests, the most valuable being
-the ones asserting that known Brighton landmarks land in the right
-district. A shifted polygon raises no error - it quietly relocates half
-the venues to a neighbouring district, and the map still looks plausible.
+![Динамика](reports/figures/monthly_trend.png)
 
 ---
 
-## Bugs I found and fixed
+## Инженерные решения, за которые не стыдно
 
-A dedicated section, because interviews ask about this more often than
-about architecture.
+**Уважение к rate limits - не декларация, а код.** При разработке я сам
+получил бан: четыре тяжёлых запроса подряд без пауз, и Overpass ответил
+`406`, а затем стал обрывать TLS-соединение. Отсюда в `collect/http.py`
+появились пауза между запросами, экспоненциальный backoff, `406`
+и `SSLError` в списке повторяемых ошибок, а в `osm_places.py` - перебор
+зеркал Overpass.
 
-**1. A hole in the boundaries.** The Royal Pavilion - the city's most
-famous landmark - fell into "other": there was an unclosed gap between
-The Lanes and Kemptown around Old Steine. Caught by checking against a
-list of known landmarks; now a test.
+**Приватность.** Ники авторов Reddit не сохраняются: вместо них пишется
+необратимый хэш. Отличить одного автора от другого можно, восстановить
+личность - нет.
 
-**2. Substring of another venue's name.** A text about "Donuts & Churros"
-in Kemptown was routed to The Lanes, because a venue named "Churros"
-exists there. The exact name occurred in two districts and was dropped as
-ambiguous, leaving the short substring to hijack the match. Fixed with a
-filter: a name is unusable if it is contained in a venue name from a
-different district. Linking accuracy: 99.9% → **100%**.
+**Данные и код разделены.** Сырые данные в `.gitignore`. В репозиторий
+едут только агрегаты из `data/processed/`.
 
-**3. Geography leaking into topics.** The first BERTopic run produced a
-"topic" called *north laine* containing 71% of that district's texts. The
-model did its job honestly - the district name appears in every text and
-separates them perfectly. But that is clustering by geography, which we
-already know. Fixed with stopwords.
-
-**4. Median on a bimodal distribution.** A two-class classifier's scores
-cluster at ±1. The median of such a distribution was +0.96…+0.99 in
-**every** district - all of them looked identical, and the "polarisation"
-metric measured distribution shape rather than disagreement.
-
-**5. Ranking by raw average.** The top venues list filled up with places
-that had three reviews and a "perfect" score of 1.00. Fixed by shrinking
-toward the city-wide mean (Bayesian average, the same trick IMDb's
-Top 250 uses): a venue with 8 mentions at 0.88 now outranks one with 3
-at 1.00.
-
-**6. A colour scale that lies.** On a symmetric scale all five districts
-came out identically green - the differences collapsed. Stretching the
-scale to the data range is tempting, but then a district at +0.15 turns
-red and reads as "bad". Solution: two maps, with the relative one stating
-in its legend that red means "worst of five", not "bad".
+**Тесты на то, что ломается молча.** 28 тестов, из них самые полезные -
+проверка привязки известных мест Брайтона к районам. Сдвинутый полигон
+не вызывает ошибку, он просто тихо перевозит половину заведений
+в соседний район, и на карте это выглядит правдоподобно.
 
 ---
 
-## When a data source disappears mid-project
+## Ошибки, которые я нашёл и исправил
 
-This project was designed around Google Places reviews, moved to Reddit
-over Terms of Service, and then Reddit closed app registration. Two out of
-two sources fell away for reasons unrelated to the code.
+Отдельный раздел, потому что на собеседовании про это спрашивают чаще,
+чем про архитектуру.
 
-What made that survivable without a rewrite:
+**1. Дыра в границах.** Royal Pavilion - самая известная
+достопримечательность города - проваливался в категорию «other»:
+между The Lanes и Kemptown был незакрытый зазор у Old Steine.
+Поймано проверкой на списке известных мест, теперь это тест.
 
-* **A single output schema for every collector.** They all emit the same
-  columns, so the rest of the pipeline neither knows nor needs to know
-  where the data came from.
-* **Config over constants.** District boundaries, object categories and
-  keywords live in YAML. Switching sources requires no code changes.
-* **A demo generator.** It let the NLP half reach completion without
-  access - and it is labelled as synthetic everywhere it surfaces.
+**2. Подстрока чужого названия.** Текст про кафе «Donuts & Churros»
+в Кемптауне уезжал в The Lanes, потому что там есть заведение «Churros».
+Точное название встречалось в двух районах и было отброшено как
+неоднозначное, а короткая подстрока осталась и перехватила совпадение.
+Исправлено фильтром: название нельзя использовать, если оно входит
+в название заведения из другого района. Точность привязки: 99.9% → **100%**.
+
+**3. Утечка географии в темы.** Первый прогон BERTopic нашёл «тему»
+под названием *north laine*, в которую попал 71% текстов района.
+Модель честно сделала свою работу: название района встречается в каждом
+тексте и отлично их разделяет. Но это кластеризация по географии,
+которую мы и так знаем. Лечится стоп-словами.
+
+**4. Медиана на бимодальном распределении.** Оценки двухклассового
+классификатора прижаты к ±1. Медиана по такому распределению равнялась
++0.96…+0.99 во **всех** районах - все выглядели одинаково, а «поляризация»
+измеряла форму распределения, а не расхождение мнений.
+
+**5. Рейтинг по средней оценке.** В топе заведений оказались места
+с тремя отзывами и «идеальной» оценкой 1.00. Исправлено сжатием
+к общегородскому среднему (байесовское среднее, тот же приём, что
+в топ-250 IMDb): место с 8 упоминаниями и 0.88 теперь стоит выше места
+с 3 и единицей.
+
+**6. Цветовая шкала, которая врёт.** На симметричной шкале все пять
+районов оказались одинаково зелёными - различия схлопнулись. Растянуть
+шкалу на диапазон данных заманчиво, но тогда район с +0.15 красится
+в красный и читается как «плохой». Решение: две карты, у относительной
+в легенде прямо написано, что красный значит «худший из пяти».
 
 ---
 
-## Next steps
+## Когда источник данных исчезает посреди проекта
 
-* **Find a replacement for the text source.** Reddit is closed; candidates
-  include archived Reddit dumps, forums, and local news sites with
-  comments. Once real text exists, re-run the topic-method comparison:
-  on the demo corpus the keyword method has an unfair advantage.
-* **Connect the two sources.** Police.uk data and the texts currently sit
-  side by side without intersecting. An interesting question: do the
-  districts where people complain about noise in text match the districts
-  where police record `public-order` offences?
-* **Fine-tune the sentiment model on British colloquial English.** SST-2
-  was trained on film reviews; *"proper lush"* and *"bit grim"* are
-  foreign vocabulary to it.
-* **Use real district boundaries** instead of hand-drawn polygons.
-* **More data per cell.** The median is currently 31 texts per
-  district × month, with 12% of cells below the reliability threshold.
+Проект задумывался на отзывах Google Places, потом был переведён на
+Reddit из-за условий использования, а затем Reddit закрыл регистрацию
+приложений. Два источника из двух отпали по причинам, не зависящим
+от кода.
+
+Что помогло пережить это без переписывания проекта:
+
+* **Единый формат на выходе сборщиков.** Все они отдают одинаковый набор
+  колонок, поэтому остальной пайплайн не знает и не должен знать,
+  откуда пришли данные.
+* **Конфиги вместо констант.** Границы районов, категории объектов
+  и ключевые слова лежат в YAML. Смена источника не требует правки кода.
+* **Демо-генератор.** Позволил довести NLP-часть до конца, не дожидаясь
+  доступа, - и честно помечен как синтетика везде, где показывается.
+
+## Что стоит сделать дальше
+
+* **Найти замену текстам.** Reddit закрыт; кандидаты - архивные дампы
+  Reddit, форумы, местные новостные сайты с комментариями. Как только
+  появятся реальные тексты, перепроверить сравнение методов тем: на
+  демо-корпусе словарный метод получает нечестное преимущество.
+* **Связать два источника.** Сейчас Police.uk и тексты живут рядом,
+  но не пересекаются. Интересный вопрос: совпадают ли районы, где
+  жалуются на шум в текстах, с районами, где полиция фиксирует
+  `public-order`?
+* **Дообучить sentiment-модель на британском разговорном английском.**
+  SST-2 обучен на рецензиях на фильмы; *«proper lush»* и *«bit grim»*
+  для него незнакомая лексика.
+* **Взять настоящие границы районов** вместо нарисованных вручную.
+* **Больше данных на ячейку.** Сейчас медиана - 31 текст на
+  район × месяц, 12% ячеек ниже порога надёжности.
 
 ---
 
-## Stack
+## Стек
 
 Python 3.14 · pandas · shapely · scikit-learn · VADER · transformers
 (DistilBERT) · BERTopic · Folium · Plotly · Streamlit · pytest
 
-## Data licences
+## Лицензии данных
 
-* **OpenStreetMap** - ODbL, attribution required. Attributed on the map.
-* **Police.uk** - Open Government Licence v3.0, attribution required.
-  Attributed on the chart and in this README.
-* **Reddit** - collected through the official API, author names hashed,
-  raw text never committed. Access has required an approved application
-  since November 2025.
-#   b r i g h t o n - e m o t i o n a l - m a p  
- 
+* **OpenStreetMap** - ODbL, требует указания источника. Указано на карте.
+* **Police.uk** - Open Government Licence v3.0, требует указания
+  источника. Указано на графике и в этом README.
+* **Reddit** - сбор через официальный API, ники хэшируются, сырые
+  тексты в репозиторий не попадают. С ноября 2025 доступ только
+  по одобренной заявке.
